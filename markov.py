@@ -2,7 +2,7 @@ import math
 import random
 import numpy as np
 from typing import Union
-from constants import *
+from bedevere import *
 
 
 class MarkovChain:

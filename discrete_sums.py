@@ -1,6 +1,6 @@
 import math
 from typing import Tuple, Union, List
-from constants import *
+from bedevere import *
 
 
 def convolution(x: dict, y: dict) -> dict:

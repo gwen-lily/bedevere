@@ -1,8 +1,7 @@
 # __init__.py
 
 # Version
-__version__ = "1.0.0"
+__version__ = "0.0.1"
 
-# Imports
-
-from constants import *
+# Constants import
+from bedevere.constants import *
