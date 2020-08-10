@@ -1,19 +1,8 @@
-import math
-from typing import Tuple, Union, List
 from bedevere import *
 
 
 def convolution(x: dict, y: dict) -> dict:
     """Return a distribution representing the sum of two distributions"""
-
-    # TODO: add scale, scale: tuple = None
-    # if scale:
-    #     for key, val in x.items():
-    #         x[key] = val * scale[0]
-    #
-    #     for key, val in y.items():
-    #         y[key] = val * scale[1]
-
     z = {}
 
     for j in range(sum([min(x), min(y)]), sum([max(x), max(y)]) + 1):
@@ -44,21 +33,28 @@ def convolution_list(x: List[dict]) -> dict:
     return z
 
 
-def n_convolution(x: dict, n: int):
+def n_convolution(x: dict, n: int) -> dict:
     """Return a distribution representing the sum of n distributions x"""
     assert n > 0
 
-    if n == 1:
-        return x
+    if n > 2:
+        return convolution(x, n_convolution(x, n-1))
 
     elif n == 2:
         return convolution(x, x)
 
+    elif n == 1:
+        return x
+
     else:
-        return convolution(x, n_convolution(x, n-1))
+        raise RuntimeError
 
 
-def discrete_uniform_sum_term(n: int, y: int, k: int):
+def discrete_uniform_sum_term(n: int, y: int, k: int) -> float:
+    """Returns a very specific term as descrbied by Caiado & Rathie
+
+    Link: http://community.dur.ac.uk/c.c.d.s.caiado/multinomial.pdf"""
+
     itersum = 0
 
     for p in range(0, math.floor(y/(k+1)) + 1):
@@ -97,7 +93,7 @@ def discrete_uniform_sum_term(n: int, y: int, k: int):
     #                range(0, math.floor(y/(k+1))+1)))
 
 
-def n_convolution_discrete_uniform(k: int, n: int):
+def n_convolution_discrete_uniform(k: int, n: int) -> dict:
     """Returns a distribution representing the sum of n discrete uniform variables from 0 to k
 
     given a discrete uniform variable X with values (0, 1, 2, ... k), return the distribution of the sum of n instances
@@ -119,14 +115,14 @@ def n_convolution_discrete_uniform_non_standard_range(value_range: Tuple[int, in
     instances with values (nj, nj + 1, nj + 2, ... n(j+k)"""
 
     assert n > 0
-    assert len(value_range) == 2
-    assert value_range[0] < value_range[1]
+    assert all(type(i) == int for i in value_range)
 
-    k = value_range[1] - value_range[0]
+    low_value, high_value = (min(value_range), max(value_range))
+    k = high_value - low_value
     d = n_convolution_discrete_uniform(k, n)
     dprime = {}
 
     for key, val in d.items():
-        dprime[key + n*value_range[0]] = val
+        dprime[key + n*low_value] = val
 
     return dprime

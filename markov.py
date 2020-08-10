@@ -1,8 +1,5 @@
-import math
-import random
-import numpy as np
-from typing import Union
 from bedevere import *
+from bedevere.matrix import *
 
 
 class MarkovChain:
@@ -134,18 +131,11 @@ class AbsorbingMarkovChain(MarkovChain):
 		return current_state, steps
 
 
-def unidirectional_transition_matrix(P: np.ndarray, precision: float = arithmetic_precision) -> bool:
-	"""Checks that a given transition matrix is square, upper-diagonal, and probability-complete
-
-	Square is an essential feature of markov chains to ensure access to and from all states, upper-diagonal implies
-	that state i can transition to state j only for j >= i, and probability complete ensures the row sums all equal
-	to 1, e.i. form a complete probability distribution from state i to states (0, 1, 2, ... j)"""
-	m, n = P.shape
-
-	return m == n and all([math.fabs(sum(P[i, :]) - 1) < precision for i in range(n)]) and \
-	       all(all([P[i, j] == 0 for j in range(i)]) for i in range(n))
+def test_mc():
+	pass
 
 
 if __name__ == '__main__':
-	test = np.asarray([[0.1, 0.9], [0, 1]])
-	unidirectional_transition_matrix(test, 1e-5)
+	pass
+	# test = np.asarray([[0.1, 0.9], [0, 1]])
+	# is_unidirectional_matrix(test, 1e-5)
