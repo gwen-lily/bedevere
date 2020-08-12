@@ -20,7 +20,11 @@ def is_stochastic(P: np.ndarray, precision: float = arithmetic_precision, stocha
 		bool: True if P is stochastic, False otherwise
 	"""
 
-	m, n = P.shape
+	try:
+		m, n = P.shape
+
+	except ValueError as E:
+		m, n = (P.shape[0], 1)
 
 	if (m == 1 and n > 1) or (m > 1 and n == 1):
 		max_dimension = max([m, n])
@@ -126,12 +130,11 @@ def is_atomic(P: np.ndarray, direction: str) -> bool:
 		column_slices = [P[:i, i] for i in range(n)]
 		nonzero_column_slices = []
 
-		for column, cs in enumerate(column_slices):
+		for cs in column_slices:
 			if any(not e == 0 for e in cs):
 				nonzero_column_slices.append(cs)
 
-		if len(nonzero_column_slices) == 1:
-			return True
+		return len(nonzero_column_slices) == 1
 
 	return False
 
@@ -187,6 +190,7 @@ def test_stochastic():
 		assert is_stochastic(left, stochastic_type='left')
 		assert is_stochastic(row)
 		assert is_stochastic(column)
+
 
 if __name__ == '__main__':
 	test_stochastic()

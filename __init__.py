@@ -1,10 +1,11 @@
 # __init__.py
 
 # Version
-__version__ = "0.0.1"
+__version__ = "0.1.3"
 
 # Constants import
 from bedevere.constants import *
+from bedevere.exceptions import *
 
 # Shared imports
 import math
