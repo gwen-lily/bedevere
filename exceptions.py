@@ -12,8 +12,17 @@ class Critical(Exception):
 
 class CriticalHit(Critical):
 
-	def __init__(self, rolls: list, value: int, message: str = 'You scored a critical hit!'):
+	def __init__(self, rolls: list, value: int, message: str = 'You scored a critical hit!', damage: int = 0):
+		self._damage = damage
 		super().__init__(rolls, value, message)
+
+	@property
+	def damage(self) -> int:
+		return self.damage
+
+	@damage.setter
+	def damage(self, value: int):
+		self.damage = value
 
 
 class CriticalFumble(Critical):
