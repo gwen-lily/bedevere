@@ -1,9 +1,11 @@
-from bedevere import *
+import numpy as np
 
 
-def convolution(x: dict, y: dict) -> dict:
+def convolution(x: dict, y: dict, /) -> dict:
     """Return a distribution representing the sum of two distributions"""
     z = {}
+
+    keys = np
 
     for j in range(sum([min(x), min(y)]), sum([max(x), max(y)]) + 1):
         rolling_sum = 0
@@ -38,7 +40,7 @@ def n_convolution(x: dict, n: int) -> dict:
     assert n > 0
 
     if n > 2:
-        return convolution(x, n_convolution(x, n-1))
+        return convolution(x, n_convolution(x, n - 1))
 
     elif n == 2:
         return convolution(x, x)
@@ -57,17 +59,17 @@ def discrete_uniform_sum_term(n: int, y: int, k: int) -> float:
 
     itersum = 0
 
-    for p in range(0, math.floor(y/(k+1)) + 1):
-        a = n + y - p*(k+1)
+    for p in range(0, math.floor(y / (k + 1)) + 1):
+        a = n + y - p * (k + 1)
 
         if a >= 1:
-            numerator = math.factorial(a - 1) * (-1)**p
+            numerator = math.factorial(a - 1) * (-1) ** p
 
         else:
-            numerator = math.gamma(a) * (-1)**p
+            numerator = math.gamma(a) * (-1) ** p
 
         b = n - p + 1
-        c = y - p*(k+1) + 1
+        c = y - p * (k + 1) + 1
 
         if b >= 1:
             d1 = math.factorial(b - 1)
@@ -81,7 +83,7 @@ def discrete_uniform_sum_term(n: int, y: int, k: int) -> float:
         else:
             d2 = math.gamma(c)
 
-        denominator = math.factorial(p+1) * d1 * d2
+        denominator = math.factorial(p + 1) * d1 * d2
 
         itersum += numerator / denominator
 
@@ -102,13 +104,15 @@ def n_convolution_discrete_uniform(k: int, n: int) -> dict:
     assert n > 0
     d = {}
 
-    for y in range(n*k + 1):
-        d[y] = n * (k + 1)**(-n) * discrete_uniform_sum_term(n, y, k)
+    for y in range(n * k + 1):
+        d[y] = n * (k + 1) ** (-n) * discrete_uniform_sum_term(n, y, k)
 
     return d
 
 
-def n_convolution_discrete_uniform_non_standard_range(value_range: Tuple[int, int], n: int):
+def n_convolution_discrete_uniform_non_standard_range(
+    value_range: Tuple[int, int], n: int
+):
     """Returns a distribution representing the sum of n discrete uniform variables over a specified range
 
     given a discrete uniform variable X with values (j, j+1, j+2, ... j+k), return the distribution of the sum of n
@@ -123,6 +127,6 @@ def n_convolution_discrete_uniform_non_standard_range(value_range: Tuple[int, in
     dprime = {}
 
     for key, val in d.items():
-        dprime[key + n*low_value] = val
+        dprime[key + n * low_value] = val
 
     return dprime
