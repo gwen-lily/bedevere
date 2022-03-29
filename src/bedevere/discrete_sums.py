@@ -5,16 +5,19 @@ def convolution(x: dict, y: dict, /) -> dict:
     """Return a distribution representing the sum of two distributions"""
     z = {}
 
-    keys = np
+    min_val = sum(min(x), min(y))
+    max_val = sum(max(x), max(y))
 
-    for j in range(sum([min(x), min(y)]), sum([max(x), max(y)]) + 1):
+    sum_space = np.arange(min_val, max_val + 1)
+
+    for j in sum_space:
         rolling_sum = 0
 
-        for k in x.keys():
+        for k in x:
             if j - k in y:
                 rolling_sum += x[k] * y[j - k]
 
-        if not rolling_sum == 0:
+        if rolling_sum != 0:
             z[j] = rolling_sum
 
     return z
