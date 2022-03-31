@@ -1,47 +1,69 @@
-# package:  bedevere
-# website:  github.com/noahgill409/bedevere
-# email:    noahgill409@gmail.com
+###############################################################################
+# package:  bedevere                                                          #
+# website:  github.com/noahgill409/bedevere                                   #
+# email:    noahgill409@gmail.com                                             #
 ###############################################################################
 
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum, auto, unique
-from typing import Iterator
+from typing import Counter, Iterator
 import numpy as np
 from itertools import product
 
 from bedevere.data import ARITHMETIC_PRECISION
 
 ###############################################################################
-# enums 'n such
+# enums 'n such                                                               #
 ###############################################################################
 
 
 @unique
 class StochasticType(Enum):
+    """Defines stochastic types."""
+
     RIGHT = auto()
     LEFT = auto()
     DOUBLY = auto()
 
 
 ###############################################################################
-# main classes
+# main classes                                                                #
 ###############################################################################
-
 
 @dataclass(frozen=True)
 class Distribution:
-    """A distribution has values with associated weights.
+    """A value-weight pairing for a N-dimensional stochastic process.
 
-    Raises:
-        ValueError: Raised if values and weights have different shapes.
-        TypeError: Raised if weights are not floats.
+    N-dimensional stochastic processes may or may not exists, but that's not
+    important right now. What is important is that markov chains are 2D, which
+    is why this exists. Use it for markov chains.
+
+    Returns
+    -------
+    StochasticDistribution
+        A distribution has values with associated weights.
+
+    Raises
+    ------
+    TypeError
+        Raised if weights are not floats.
+    ValueError
+        Raised if values and weights have different shapes.
     """
 
     values: np.ndarray | np.ndarray[np.ndarray]
     weights: np.ndarray
 
     def __post_init__(self):
+        """Perform validation on a new distribution.
+
+        Raises
+        ------
+        TypeError
+
+        ValueError
+        """
         # error handling
 
         if self.dims == 1:
@@ -70,6 +92,17 @@ class Distribution:
 
     @property
     def dtype(self) -> np.dtype:
+        """Return the dtype of the distribution's values.
+
+        Returns
+        -------
+        np.dtype
+
+        Raises
+        ------
+        ValueError
+            Raised if the dtypes of all values axes are not homogenous.
+        """
         if self.dims == 1:
             return self.values.dtype
 
@@ -83,63 +116,151 @@ class Distribution:
 
     @property
     def dtypes(self) -> np.ndarray[np.dtype]:
+        """Return the dtype iff all value members have the same dtype.
+
+        For distributions of greater order than 1, this property is given if
+        and only if all value axes have the same dtype.
+
+        Returns
+        -------
+        np.ndarray[np.dtype]
+        """
         if self.dims == 1:
             return np.array([self.values.dtype])
 
         return np.array(v.dtype for v in self.values)
 
     @property
-    def shape(self) -> np._ShapeType:
+    def shape(self) -> tuple[int, ...]:
+        """Return the shape.
+
+        Returns
+        -------
+        tuple[int, ...]
+        """
         return self.weights.shape
 
     @property
     def size(self) -> int:
+        """Return the size.
+
+        Returns
+        -------
+        int
+        """
         return self.weights.size
 
     @property
     def dims(self) -> int:
+        """Return the number of dimensions.
+
+        Returns
+        -------
+        int
+        """
         return len(self.shape)
+
+    @property
+    def is_pseudo_1d(self) -> bool:
+        """Evaluate if a distribution is pseudo-1D.
+
+        A pseudo-1D array has shape (x0, x1, x2, ...) with all xi equal to one
+        except for a single i.
+
+        Returns
+        -------
+        bool
+        """
+        c = Counter(self.shape)
+        len_one_dims = c[1]
+        return len_one_dims == (self.dims - 1)
 
     # operations
 
-    def reshape(self, shape: int | tuple[int]) -> Distribution:
-        new_vals = self.values.reshape(shape)
-        new_weights = self.weights.reshape
-        return self.__class__(new_vals, new_weights)
+    def as_1d(self) -> "Distribution":
+        """Reshape a psuedo-1D array as a proper 1D array.
+
+        See Distribution.is_pseudo_1d for more information.
+
+        Returns
+        -------
+        Distribution
+        """
+        assert self.is_pseudo_1d
+
+        proper_axis = np.where(self.shape != 1)[0][0]
+
+        _values = self.values[proper_axis]
+        _weights = self.weights.reshape(self.shape[proper_axis])
+
+        return self.__class__(_values, _weights)
+
+    # dunder operations
 
     def __iter__(self):
+        """Return self."""
         return self
 
-    def __next__(self) -> Iterator[tuple[tuple, np.ndarray]]:
-        """Yields a tuple of values as well as their weight.
+    def __next__(self) -> Iterator[tuple[np.ndarray], float]:
+        """Yield a tuple of values, as well as their weight.
 
-        Yields:
-            Iterator[tuple[tuple, np.ndarray]]: tuple[values], weight
+        Yields
+        ------
+        Iterator[tuple[np.ndarray], float]
 
+        Raises
+        ------
+        StopIteration
         """
-        values_container = self.values if self.dims > 1 else np.ndarray([self.values])
-
-        values_container = self.values if self.dims > 1 else np.ndarray([self.values])
+        if self.dims > 1:
+            values_container = self.values
+        else:
+            values_container = np.ndarray([self.values])
 
         assert isinstance(values_container, np.ndarray)
 
         for indices in product(*(range(dim) for dim in self.shape)):
-            values_i = tuple(
-                v[i] for v, i in zip(values_container, indices, strict=True)
-            )
-            weights_i = self.weights[indices]
+            zipped = zip(values_container, indices, strict=True)
+            values_i: tuple[np.ndarray] = tuple(v[i] for v, i in zipped)
+            weights_i: float = self.weights[indices]
             yield values_i, weights_i
 
+        raise StopIteration
+
     def __len__(self) -> int:
+        """Return self.size.
+
+        Returns
+        -------
+        int
+        """
         return self.size
 
 
 @dataclass(frozen=True)
 class StochasticDistribution(Distribution):
-    stochastic_type: StochasticType = field(kw_only=True, default=StochasticType.RIGHT)
+    """Associated values and weights which describe a stochastic process.
+
+    A stochastic distribution may (for now) be a 1- or 2-D array whose
+    elements describe a complete probability space. If the process is 2D,
+    such as with markov chains, the stochastic type and precision may be
+    specified.
+    """
+
+    stochastic_type: StochasticType = field(
+        kw_only=True, default=StochasticType.RIGHT)
     precision: float = field(kw_only=True, default=ARITHMETIC_PRECISION)
 
     def __post_init__(self):
+        """Initialize a distribution, then assert stochastic quality.
+
+        Raises
+        ------
+        ValueError
+            Raised if the distribution is not stochastic.
+        NotImplementedError
+            Raised if the distribution shape is not supported.
+        """
         super().__post_init__()
 
         def assert_stochastic(x: np.ndarray, /) -> bool:
@@ -150,7 +271,7 @@ class StochasticDistribution(Distribution):
             case [_]:
                 assert_stochastic(self.weights)
 
-            case [m, n]:
+            case [_, n]:
                 st = self.stochastic_type
 
                 if st in (StochasticType.RIGHT, StochasticType.DOUBLY):
@@ -166,14 +287,18 @@ class StochasticDistribution(Distribution):
 
 
 ###############################################################################
-# helper functions
+# helper functions                                                            #
 ###############################################################################
 
 
-def generate_stochastic_square_matrix(
-    n: int, stochastic_type: StochasticType
-) -> np.ndarray:
+def random_stochastic_square_matrix(n: int, stochastic_type: StochasticType) \
+        -> np.ndarray:
+    """Generate a random n by n matrix that obeys stochastic properties.
 
+    Returns
+    -------
+    np.ndarray
+    """
     match n:
         case [1]:
             x = np.array([1])
@@ -220,22 +345,25 @@ if __name__ == "__main__":
     try:
         bad_weights = np.random.random(5)
         sd = StochasticDistribution(values, bad_weights)
-    except ValueError as exc:
+    except ValueError:
         print(f"not stochastic: {bad_weights}")
 
     dim = 2
     values = np.random.random(dim**2).reshape((dim,) * 2)
     weights = np.asarray([[0.1, 0.9], [0.2, 0.8]])
 
-    d = Distribution(values, weights)
-    sd = StochasticDistribution(values, weights, stochastic_type=StochasticType.RIGHT)
+    d = StochasticDistribution(values, weights)
+    sd = StochasticDistribution(
+        values, weights, stochastic_type=StochasticType.RIGHT)
 
     values = values.T
     weights = weights.T
 
-    sd = StochasticDistribution(values, weights, stochastic_type=StochasticType.LEFT)
+    sd = StochasticDistribution(
+        values, weights, stochastic_type=StochasticType.LEFT)
 
     values = np.random.random(3**2).reshape(3, 3)
     weights = np.asarray([[0.2, 0.3, 0.5], [0.4, 0.5, 0.1], [0.4, 0.2, 0.4]])
 
-    sd = StochasticDistribution(values, weights, stochastic_type=StochasticType.DOUBLY)
+    sd = StochasticDistribution(
+        values, weights, stochastic_type=StochasticType.DOUBLY)
