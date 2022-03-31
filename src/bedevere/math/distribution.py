@@ -9,6 +9,7 @@
 """
 
 from __future__ import annotations
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, auto, unique
 from typing import Callable, Counter
@@ -44,7 +45,7 @@ class StochasticType(Enum):
 
 
 @dataclass(frozen=True)
-class Distribution(Iterator):
+class Distribution(ABC, Iterator):
     """A value-weight pairing for a N-dimensional stochastic process.
 
     N-dimensional stochastic processes may or may not exists, but that's not
@@ -67,7 +68,17 @@ class Distribution(Iterator):
     values: NDArray[generic] | NDArray[object_]
     weights: NDArray[float_]
 
-    def __post_init__(self):
+    @abstractmethod
+    @property
+    def _is_proper_shape(self) -> bool:
+        """Evaluate if the provided arguments match the use case.
+
+        Returns
+        -------
+        bool
+        """
+
+    def __post_init__(self) -> None:
         """Perform validation on a new distribution.
 
         Raises
@@ -76,7 +87,7 @@ class Distribution(Iterator):
 
         ValueError
         """
-        # error handling
+        assert self._is_proper_shape
 
         if self.dims == 1:
             if not isinstance(self.values, np.ndarray):
@@ -88,10 +99,10 @@ class Distribution(Iterator):
             if self.weights.dtype.type is not np.float64:
                 raise TypeError(self.weights.dtype)
 
-        elif self.dims == 2:
-            m, n = self.shape
-            if m == 1 ^ n == 1:
-                raise TypeError(f"{weights=} should be 1 dimensional")
+            return
+
+        if self.is_pseudo_1d:
+            raise TypeError(f"{self.weights=} should be 1 dimensional")
 
         for i in range(self.dims):
             vals_len = self.values[i].size
@@ -259,7 +270,7 @@ class Distribution(Iterator):
 
 
 @dataclass(frozen=True)
-class StochasticDistribution(Distribution):
+class StochasticDistribution(Distribution, ABC):
     """Associated values and weights which describe a stochastic process.
 
     A stochastic distribution may (for now) be a 1- or 2-D array whose
@@ -272,6 +283,34 @@ class StochasticDistribution(Distribution):
         kw_only=True, default=StochasticType.RIGHT)
     precision: float = field(kw_only=True, default=ARITHMETIC_PRECISION)
 
+    @abstractmethod
+    @property
+    def _is_stochastic(self) -> bool:
+        """Evaluate if a given distribution is stochastic.
+
+        Returns
+        -------
+        bool
+        """
+
+    def _is_stochastic_1d(self, __x: np.ndarray, /) -> bool:
+        """Evaluate if an array is stochastic.
+
+        This method is included in the abstract base class because all
+        dimensional distributions have use of it.
+
+        Parameters
+        ----------
+        __x : np.ndarray
+            A one dimensional array.
+
+        Returns
+        -------
+        bool
+        """
+        assert len(__x.shape) == 1
+        return np.absolute(__x.sum(axis=0) - 1) < self.precision
+
     def __post_init__(self) -> None:
         """Initialize a distribution, then assert stochastic quality.
 
@@ -283,34 +322,47 @@ class StochasticDistribution(Distribution):
             Raised if the distribution shape is not supported.
         """
         super().__post_init__()
+        assert self._is_stochastic
 
-        def is_stochastic(x: np.ndarray, /) -> bool:
-            if self.dims == 1:
-                return np.absolute(x.sum(axis=0) - 1) < self.precision
-            elif self.dims == 2:
-                return self._is_stochastic_2d
 
-            raise NotImplementedError
+class StochasticArray(StochasticDistribution):
+    """A one dimensional stochastic distribution."""
 
-        match self.shape:
-            case [_]:
-                assert is_stochastic(self.weights)
+    @property
+    def _is_proper_shape(self) -> bool:
+        assert self.dims == 1
 
-            case [_, n]:
-                st = self.stochastic_type
+    @property
+    def _is_stochastic(self) -> bool:
+        return self._is_stochastic_1d
 
-                if st in (StochasticType.RIGHT, StochasticType.DOUBLY):
-                    for row in self.weights:
-                        is_stochastic(row)
 
-                elif st in (StochasticType.LEFT, StochasticType.DOUBLY):
-                    for col in [self.weights[:, j] for j in range(n)]:
-                        is_stochastic(col)
+class StochasticMatrix(StochasticDistribution):
+    """A two dimensional stochastic distribution."""
 
-            case _:
-                raise NotImplementedError
+    @property
+    def _is_stochastic(self) -> bool:
+        m, n = self.shape
+        st = self.stochastic_type
+        func = self._is_stochastic_1d
+        right, left = None, None
 
-        return
+        if st in (StochasticType.RIGHT, StochasticType.DOUBLY):
+            right = all(func(r) for r in self.weights)
+
+            if st is StochasticType.RIGHT:
+                return right
+
+        if st in (StochasticType.LEFT, StochasticType.DOUBLY):
+            left = all(func(self.weights[:, j]) for j in range(n))
+
+            if st is StochasticType.LEFT:
+                return left
+
+        # doubly
+        assert right is not None
+        assert left is not None
+        return right and left
 
     # properties
     def _is_triangular(self, func: Callable) -> bool:
