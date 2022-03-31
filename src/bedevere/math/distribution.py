@@ -18,7 +18,7 @@ from numpy import generic, object_, float_
 from numpy.typing import NDArray, DTypeLike
 from itertools import product
 
-from bedevere.data import ARITHMETIC_PRECISION
+from bedevere.math.data import ARITHMETIC_PRECISION
 
 ###############################################################################
 # enums 'n such                                                               #

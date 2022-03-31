@@ -14,7 +14,7 @@ from numpy import float_, int_
 from numpy.typing import NDArray
 
 
-from bedevere.distribution import StochasticDistribution
+from bedevere.math.distribution import StochasticDistribution
 
 ###############################################################################
 # exceptions                                                                  #
