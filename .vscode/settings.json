@@ -4,25 +4,7 @@
         "--max-line-length=79"
     ],
     "python.linting.enabled": true,
-    "python.linting.mypyEnabled": true,
     "python.linting.pylintEnabled": true,
-    "python.linting.mypyArgs": [
-        "--follow-imports=silent",
-        "--ignore-missing-imports",
-        "--show-column-numbers",
-        "--no-pretty",
-        "--check_untyped_defs=true",
-        "--disallow_any_generics=true",
-        "--ignore_missing_imports=false",
-        "--no_implicit_optional=true",
-        "--show_error_codes=true",
-        "--strict_equality=true",
-        "--warn_redundant_casts=true",
-        "--warn_redundant_any=true",
-        "--warn_unreachable=true",
-        "--warn_unused_configs=true",
-        "--no_implicit_reexport=true",
-    ],
     "python.linting.pylintArgs": [
         "--max-line-length=79 --aggressive"
     ],
@@ -31,4 +13,22 @@
         "--max-line-length=79",
         "--ignore=D100"
     ],
+    //    "python.linting.mypyEnabled": true,
+    //    "python.linting.mypyArgs": [
+    //        "--follow-imports=silent",
+    //        "--ignore-missing-imports",
+    //        "--show-column-numbers",
+    //        "--no-pretty",
+    //        "--check_untyped_defs=true",
+    //        "--disallow_any_generics=true",
+    //        "--ignore_missing_imports=false",
+    //        "--no_implicit_optional=true",
+    //        "--show_error_codes=true",
+    //        "--strict_equality=true",
+    //        "--warn_redundant_casts=true",
+    //        "--warn_redundant_any=true",
+    //        "--warn_unreachable=true",
+    //        "--warn_unused_configs=true",
+    //        "--no_implicit_reexport=true",
+    //    ],
 }

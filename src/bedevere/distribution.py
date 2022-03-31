@@ -1,8 +1,12 @@
+"""Defines Distribution and StochasticDistribution.
+
 ###############################################################################
 # package:  bedevere                                                          #
 # website:  github.com/noahgill409/bedevere                                   #
 # email:    noahgill409@gmail.com                                             #
 ###############################################################################
+
+"""
 
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -26,7 +30,7 @@ class StochasticType(Enum):
     """Defines stochastic types for 2-D distributions (matrices).
 
     Right stochastic means that the row entries sum to one. Left stochastic
-    means that column entries sum to one. Doubly stochastic is both left and 
+    means that column entries sum to one. Doubly stochastic is both left and
     right stochastic.
     """
 
@@ -114,7 +118,15 @@ class Distribution(Iterator):
         if self.dims == 1:
             return self.values.dtype
 
-        data_types = np.array((val.dtype for val in self.values))
+        def val_generator() -> DTypeLike:
+            for val in self.values:
+                assert isinstance(val, np.ndarray)
+                __dtype: DTypeLike = val.dtype
+                assert isinstance(__dtype, DTypeLike)
+
+                yield __dtype
+
+        data_types: NDArray[object_] = np.array(val_generator, dtype=object)
         _data_type = data_types[0]
 
         if any(data_type is not _data_type for data_type in data_types):
@@ -209,7 +221,8 @@ class Distribution(Iterator):
         """Return self."""
         return self
 
-    def __next__(self) -> Generator[tuple[tuple[NDArray[generic], float]], None, None]:
+    def __next__(self) -> Generator[
+            tuple[tuple[NDArray[generic], float]], None, None]:
         """Yield a tuple of values, as well as their weight.
 
         Yields
@@ -355,7 +368,6 @@ def random_stochastic_square_matrix(n: int, stochastic_type: StochasticType) \
             row = np.random.dirichlet(np.ones(2))
             x: NDArray[float_] = np.array([row, row[::-1]])
         case [3]:
-            raise NotImplementedError
             # # create matrix and generate first column & row
             # a = np.empty(shape=(3,) * 2, dtype=np.float64)
             # a[:, 0] = np.random.dirichlet(np.ones(3))
@@ -380,6 +392,7 @@ def random_stochastic_square_matrix(n: int, stochastic_type: StochasticType) \
             # # easy mode
             # # fill row 0:
             # # fill x10 with v < (1 - max(x0_))
+            raise NotImplementedError
 
     return x
 

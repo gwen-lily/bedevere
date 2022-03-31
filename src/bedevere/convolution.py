@@ -1,8 +1,12 @@
+"""Contains convolution functions for producing stochastic distributions.
+
 ###############################################################################
 # package:  bedevere                                                          #
 # website:  github.com/noahgill409/bedevere                                   #
 # email:    noahgill409@gmail.com                                             #
 ###############################################################################
+
+"""
 
 import math
 import numpy as np
