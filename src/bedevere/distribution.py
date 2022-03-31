@@ -7,8 +7,11 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum, auto, unique
-from typing import Counter, Iterator
+from typing import Counter
+from collections.abc import Iterator, Generator
 import numpy as np
+from numpy import generic, object_, float_
+from numpy.typing import NDArray, DTypeLike
 from itertools import product
 
 from bedevere.data import ARITHMETIC_PRECISION
@@ -26,13 +29,13 @@ class StochasticType(Enum):
     LEFT = auto()
     DOUBLY = auto()
 
-
 ###############################################################################
 # main classes                                                                #
 ###############################################################################
 
+
 @dataclass(frozen=True)
-class Distribution:
+class Distribution(Iterator):
     """A value-weight pairing for a N-dimensional stochastic process.
 
     N-dimensional stochastic processes may or may not exists, but that's not
@@ -52,8 +55,8 @@ class Distribution:
         Raised if values and weights have different shapes.
     """
 
-    values: np.ndarray | np.ndarray[np.ndarray]
-    weights: np.ndarray
+    values: NDArray[generic] | NDArray[object_]
+    weights: NDArray[float_]
 
     def __post_init__(self):
         """Perform validation on a new distribution.
@@ -91,7 +94,7 @@ class Distribution:
     # properties
 
     @property
-    def dtype(self) -> np.dtype:
+    def dtype(self) -> DTypeLike:
         """Return the dtype of the distribution's values.
 
         Returns
@@ -115,7 +118,7 @@ class Distribution:
         return _data_type
 
     @property
-    def dtypes(self) -> np.ndarray[np.dtype]:
+    def dtypes(self) -> NDArray[object_]:
         """Return the dtype iff all value members have the same dtype.
 
         For distributions of greater order than 1, this property is given if
@@ -201,7 +204,7 @@ class Distribution:
         """Return self."""
         return self
 
-    def __next__(self) -> Iterator[tuple[np.ndarray], float]:
+    def __next__(self) -> Generator[tuple[tuple[NDArray[generic], float]], None, None]:
         """Yield a tuple of values, as well as their weight.
 
         Yields
@@ -221,7 +224,7 @@ class Distribution:
 
         for indices in product(*(range(dim) for dim in self.shape)):
             zipped = zip(values_container, indices, strict=True)
-            values_i: tuple[np.ndarray] = tuple(v[i] for v, i in zipped)
+            values_i: tuple = tuple(v[i] for v, i in zipped)
             weights_i: float = self.weights[indices]
             yield values_i, weights_i
 
@@ -251,7 +254,7 @@ class StochasticDistribution(Distribution):
         kw_only=True, default=StochasticType.RIGHT)
     precision: float = field(kw_only=True, default=ARITHMETIC_PRECISION)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize a distribution, then assert stochastic quality.
 
         Raises
@@ -263,28 +266,33 @@ class StochasticDistribution(Distribution):
         """
         super().__post_init__()
 
-        def assert_stochastic(x: np.ndarray, /) -> bool:
-            if np.absolute(x.sum(axis=0) - 1) >= self.precision:
-                raise ValueError(x)
+        def is_stochastic(x: np.ndarray, /) -> bool:
+            if self.dims == 1:
+                return np.absolute(x.sum(axis=0) - 1) < self.precision
+            elif self.dims == 2:
+                raise NotImplementedError
+
+            raise NotImplementedError
 
         match self.shape:
             case [_]:
-                assert_stochastic(self.weights)
+                is_stochastic(self.weights)
 
             case [_, n]:
                 st = self.stochastic_type
 
                 if st in (StochasticType.RIGHT, StochasticType.DOUBLY):
                     for row in self.weights:
-                        assert_stochastic(row)
+                        is_stochastic(row)
 
                 elif st in (StochasticType.LEFT, StochasticType.DOUBLY):
                     for col in [self.weights[:, j] for j in range(n)]:
-                        assert_stochastic(col)
+                        is_stochastic(col)
 
             case _:
                 raise NotImplementedError
 
+        return
 
 ###############################################################################
 # helper functions                                                            #
@@ -301,35 +309,36 @@ def random_stochastic_square_matrix(n: int, stochastic_type: StochasticType) \
     """
     match n:
         case [1]:
-            x = np.array([1])
+            x: NDArray[float_] = np.array([float(1)])
         case [2]:
             row = np.random.dirichlet(np.ones(2))
-            x = np.array([row, row[::-1]])
+            x: NDArray[float_] = np.array([row, row[::-1]])
         case [3]:
-            # create matrix and generate first column & row
-            a = np.empty(shape=(3,) * 2, dtype=np.float64)
-            a[:, 0] = np.random.dirichlet(np.ones(3))
-            # a[0, 1:] = (1 - a[0]) * np.random.dirichlet(np.ones(2))
-            a[1, 0] = np.random.random()
+            raise NotImplementedError
+            # # create matrix and generate first column & row
+            # a = np.empty(shape=(3,) * 2, dtype=np.float64)
+            # a[:, 0] = np.random.dirichlet(np.ones(3))
+            # # a[0, 1:] = (1 - a[0]) * np.random.dirichlet(np.ones(2))
+            # a[1, 0] = np.random.random()
 
-            # solve system of 4 equations with 4 unknowns
+            # # solve system of 4 equations with 4 unknowns
 
-            # # # # # # # # # # # # # # # # # # #
-            #                                   #
-            #          A  *    x  =        b    #
-            #                                   #
-            # # # # # # # # # # # # # # # # # # #
-            #                                   #
-            #    1 1 0 0    x_11    1 - a_10    #
-            #    1 0 1 0    x_12    1 - a_01    #
-            #    0 1 0 1    x_21    1 - a_02    #
-            #    0 0 1 1    x_22    1 - a_20    #
-            #                                   #
-            # # # # # # # # # # # # # # # # # # #
+            # # # # # # # # # # # # # # # # # # # #
+            # #                                   #
+            # #          A  *    x  =        b    #
+            # #                                   #
+            # # # # # # # # # # # # # # # # # # # #
+            # #                                   #
+            # #    1 1 0 0    x_11    1 - a_10    #
+            # #    1 0 1 0    x_12    1 - a_01    #
+            # #    0 1 0 1    x_21    1 - a_02    #
+            # #    0 0 1 1    x_22    1 - a_20    #
+            # #                                   #
+            # # # # # # # # # # # # # # # # # # # #
 
-            # easy mode
-            # fill row 0:
-            # fill x10 with v < (1 - max(x0_))
+            # # easy mode
+            # # fill row 0:
+            # # fill x10 with v < (1 - max(x0_))
 
     return x
 

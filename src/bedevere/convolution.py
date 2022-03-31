@@ -6,6 +6,9 @@
 
 import math
 import numpy as np
+from numpy import float_, int_
+from numpy.typing import NDArray
+
 
 from bedevere.distribution import StochasticDistribution
 
@@ -121,10 +124,12 @@ def _xy_convolution(
     min_val = sum(min(x.values), min(y.values))
     max_val = sum(max(x.values), max(y.values))
 
-    z_values = np.arange(min_val, max_val + 1)
-    z_weights = np.zeros(shape=z_values.shape)
+    z_values: NDArray[int_] = np.arange(min_val, max_val + 1)
+    z_weights: NDArray[float_] = np.zeros(shape=z_values.shape)
 
     for z_idx, z_val in enumerate(z_values):
+        assert isinstance(z_val, float)
+
         for x_val, x_wt in x:
             y_val = z_val - x_val
             y_val_idcs = np.where(y == y_val)[0]
@@ -226,10 +231,12 @@ def wumbo(n: int, y: int, k: int) -> float:
 
         wumbo += numerator / denominator
 
+    assert wumbo != 0
     return wumbo
 
 
-def _n_convolution_discrete_uniform(*args: int) -> StochasticDistribution:
+def _n_convolution_discrete_uniform(*args: int | range) \
+        -> StochasticDistribution:
     """Find the sum of a discrete uniform variable X, n times.
 
     Given a discrete uniform variable X with values (j, j+1, ... j+k), return
@@ -255,32 +262,33 @@ def _n_convolution_discrete_uniform(*args: int) -> StochasticDistribution:
         case [u, v]:
             if all(isinstance(i, int) for i in (u, v)):
                 k, n = u, v
+                assert all(isinstance(i, int) for i in (k, n))
             elif isinstance(u, range) and isinstance(v, int):
                 lo, hi = min(u), max(u)
                 k = hi - lo
-                n = v
-                offset = n * lo
+                offset = v * lo
             else:
                 raise TypeError(u, v)
 
-        case [lo, hi, v]:
+        case [lo, hi, _n]:
             k = hi - lo
-            n = v
-            offset = n * lo
+            n = _n
+            offset = _n * lo
         case _:
             raise TypeError(*args)
 
+    assert isinstance(n, int)
     if n <= 0:
         raise PositiveIntegerError(n)
 
     y_values = np.arange(n * k + 1)
-    weights = np.empty(shape=y_values.shape, dtype=float)
+    weights: NDArray = np.empty(shape=y_values.shape, dtype=float)
 
     for y in y_values:
         weights[y] = wumbo(n, y, k) * n * (k + 1) ** (-n)
 
     if offset is not None:
-        for idx, val in y_values[:]:
+        for idx, val in enumerate(y_values[:]):
             y_values[idx] = val + offset
 
     d = StochasticDistribution(y_values, weights)
