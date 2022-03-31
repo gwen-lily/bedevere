@@ -7,7 +7,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum, auto, unique
-from typing import Counter
+from typing import Callable, Counter
 from collections.abc import Iterator, Generator
 import numpy as np
 from numpy import generic, object_, float_
@@ -23,7 +23,12 @@ from bedevere.data import ARITHMETIC_PRECISION
 
 @unique
 class StochasticType(Enum):
-    """Defines stochastic types."""
+    """Defines stochastic types for 2-D distributions (matrices).
+
+    Right stochastic means that the row entries sum to one. Left stochastic
+    means that column entries sum to one. Doubly stochastic is both left and 
+    right stochastic.
+    """
 
     RIGHT = auto()
     LEFT = auto()
@@ -270,13 +275,13 @@ class StochasticDistribution(Distribution):
             if self.dims == 1:
                 return np.absolute(x.sum(axis=0) - 1) < self.precision
             elif self.dims == 2:
-                raise NotImplementedError
+                return self._is_stochastic_2d
 
             raise NotImplementedError
 
         match self.shape:
             case [_]:
-                is_stochastic(self.weights)
+                assert is_stochastic(self.weights)
 
             case [_, n]:
                 st = self.stochastic_type
@@ -293,6 +298,42 @@ class StochasticDistribution(Distribution):
                 raise NotImplementedError
 
         return
+
+    # properties
+    def _is_triangular(self, func: Callable) -> bool:
+        m, n = self.shape
+
+        if m != n:
+            return False
+
+        return self.weights == func(self.weights)
+
+    def _main_diagonal_all_equal(self, val, /) -> bool:
+        m, n = self.shape
+        d = min(m, n)
+
+        return all(self.weights[i, i] == val for i in range(d))
+
+    @property
+    def is_upper_triangular(self) -> bool:
+        """Evaluate if the distribution is upper triangular.
+
+        Returns
+        -------
+        bool
+        """
+        return self._is_triangular(np.triu)
+
+    @property
+    def is_lower_triangular(self) -> bool:
+        """Evaluate if the distribution is lower triangular.
+
+        Returns
+        -------
+        bool
+        """
+        return self._is_triangular(np.tril)
+
 
 ###############################################################################
 # helper functions                                                            #
